@@ -23,9 +23,20 @@ class Softmax:
         # TODO: Implement forward pass
         # Compute the softmax in a numerically stable way
         # Apply it to the dimension specified by the `dim` parameter
-        self.A = NotImplementedError
-        raise NotImplementedError
+        self.input_shape = Z.shape
+        Z_moved = np.moveaxis(Z, self.dim, -1)
+        self.moved_shape = Z_moved.shape 
+        C = Z_moved.shape[-1]
+        Z_flat = Z_moved.reshape(-1, C)
 
+        Z_stable = Z_flat - np.max(Z_flat, axis=1, keepdims=True)
+        exp_Z = np.exp(Z_stable)
+        A_flat = exp_Z / np.sum(exp_Z, axis=1, keepdims=True)
+
+        A_moved = A_flat.reshape(self.moved_shape)
+
+        self.A = np.moveaxis(A_moved, -1, self.dim)
+        return self.A 
     def backward(self, dLdA):
         """
         :param dLdA: Gradient of loss wrt output
@@ -37,19 +48,32 @@ class Softmax:
         shape = self.A.shape
         # Find the dimension along which softmax was applied
         C = shape[self.dim]
-           
+        
+        # Let's move the dimension to the end.
+        A_moved = np.moveaxis(self.A, self.dim, -1)
+        dLdA_moved = np.moveaxis(dLdA, self.dim, -1)
+        
+        moved_shape = A_moved.shape
         # Reshape input to 2D
         if len(shape) > 2:
-            self.A = NotImplementedError
-            dLdA = NotImplementedError
+            self.A = A_moved.reshape(-1, C)
+            dLdA = dLdA_moved.reshape(-1, C)
+        else:
+   
+            self.A = A_moved
+            dLdA = dLdA_moved
+        
+        dLdZ = self.A * (dLdA - np.sum(dLdA * self.A, axis=1, keepdims=True))
 
         # Reshape back to original dimensions if necessary
         if len(shape) > 2:
             # Restore shapes to original
-            self.A = NotImplementedError
-            dLdZ = NotImplementedError
+            self.A = A_moved.reshape(moved_shape)
+            dLdZ = dLdZ.reshape(moved_shape) 
 
-        raise NotImplementedError
+        dLdZ = np.moveaxis(dLdZ, -1, self.dim)
+        return dLdZ
+
  
 
     
